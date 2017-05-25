@@ -18,17 +18,21 @@ class Scrapper:
 		__session = aiohttp.ClientSession(loop=self.loop, headers=self.headers)
 		with async_timeout.timeout(self.timeout):
 			async with __session as session:
-				async with session.get(url) as response:
-					try:
-						text = await response.text()
-					except:
-						print(url, 'has an unicode error')
-						return
-					try:
-						return html.fromstring(text)
-					except:
-						print(url, 'has a XML/HTML parsing error')
-						return
+				try:
+					async with session.get(url) as response:
+						try:
+							text = await response.text()
+						except:
+							print(url, 'has an unicode error')
+							return
+						try:
+							return html.fromstring(text)
+						except:
+							print(url, 'has a XML/HTML parsing error')
+							return
+				except:
+					print(url, 'has a HTTP/SSL errors')
+					return
 
 
 class Google(Scrapper):
