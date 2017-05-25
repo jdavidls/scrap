@@ -21,7 +21,6 @@ class Scrapper:
 				async with session.get(url) as response:
 					try:
 						text = await response.text()
-						print(text)
 					except:
 						print(url, 'has an unicode error')
 						return
