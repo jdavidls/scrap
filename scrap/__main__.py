@@ -1,10 +1,22 @@
-import sys
-import asyncio
-import aiohttp
-import async_timeout
+import sys, asyncio, aiohttp, async_timeout
 from lxml import html, etree
+from tld import get_tld
+from urllib.parse import urlparse
 
 USER_AGENT = 'Mozilla/5.0 (iPad; CPU OS 9_1 like Mac OS X) AppleWebKit/601.1.46 (KHTML, like Gecko) Version/9.0 Mobile/13B143 Safari/601.1'
+
+'''
+
+ 	Solo buscar homes.
+ 	analizar doctype html5
+ 	blacklist
+ 	solo una busqueda por web (crear un indice)
+
+'''
+
+
+
+from . import blacklist
 
 class Scrapper:
 	def __init__(self, loop, timeout=10):
@@ -15,9 +27,8 @@ class Scrapper:
 		}
 
 	async def get(self, url):
-		__session = aiohttp.ClientSession(loop=self.loop, headers=self.headers)
 		with async_timeout.timeout(self.timeout):
-			async with __session as session:
+			async with aiohttp.ClientSession(loop=self.loop, headers=self.headers) as session:
 				try:
 					async with session.get(url) as response:
 						try:
@@ -47,12 +58,12 @@ class Google(Scrapper):
 			if ads:
 				adLinks = html.xpath('//li[@class="ads-ad"]/child::a/@href')
 				for link in adLinks:
-					yield link
+					yield link, 'ads'
 
 			if organic:
 				organicLinks = html.xpath('//h3[@class="r"]/child::a/@href')
 				for link in organicLinks:
-					yield link
+					yield link, 'organic'
 
 			# next page
 			url = html.xpath('//a[@id="pnnext"]/@href')
@@ -61,18 +72,30 @@ class Google(Scrapper):
 			url = url[0]
 
 
+
 async def search(loop, keywords):
 	scrapper = Scrapper(loop)
 	google = Google(loop)
 
-	async for link in google.search(keywords):
+	pages = {}
+
+	async for link, origin in google.search(keywords):
+
+		urlparts = urlparse(link)
+		link = '{url.scheme}://{url.netloc}'.format(url=urlparts)
+		tld = get_tld(link)
+
+		if tld in pages or tld in blacklist.tld: continue
+
 		#print('scanning', link)
 		page = await scrapper.get(link)
 		if page is None: continue
 
 		# cuenta el numero de tablas
 		tables = page.xpath('//table')
-		tables and print('  ', link, 'has', len(tables), 'tables')
+		tables and print(origin, link, 'has', len(tables), 'tables')
+
+
 
 loop = asyncio.get_event_loop()
 loop.run_until_complete(search(loop, '+'.join(sys.argv[1:])))
