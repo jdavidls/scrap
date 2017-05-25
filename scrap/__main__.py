@@ -66,14 +66,13 @@ async def search(loop, keywords):
 	google = Google(loop)
 
 	async for link in google.search(keywords):
-		print('scanning', link)
+		#print('scanning', link)
 		page = await scrapper.get(link)
 		if page is None: continue
 
 		# cuenta el numero de tablas
 		tables = page.xpath('//table')
-		#tables and
-		print('  ', link, 'has', len(tables), 'tables')
+		tables and print('  ', link, 'has', len(tables), 'tables')
 
 loop = asyncio.get_event_loop()
 loop.run_until_complete(search(loop, '+'.join(sys.argv[1:])))
