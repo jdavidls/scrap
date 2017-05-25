@@ -1,0 +1,25 @@
+{
+  "name": "@prodisign/scrapper",
+  "version": "0.1.0",
+  "description": "",
+  "main": "build/index.js",
+  "scripts": {
+	  "postinstall": "selenium-standalone install",
+	  "test": "echo \"Error: no test specified\" && exit 1",
+	  "scrap": "node build/index.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "phantomjs-prebuilt": "^2.1.14",
+    "webdriverio": "^4.8.0"
+  },
+  "devDependencies": {
+    "@types/node": "^7.0.21",
+    "@types/selenium-webdriver": "^3.0.4",
+    "@types/webdriverio": "^4.7.0",
+    "chromedriver": "^2.29.0",
+    "selenium-webdriver": "^3.4.0",
+    "wdio-selenium-standalone-service": "0.0.8"
+  }
+}
