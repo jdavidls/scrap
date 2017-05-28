@@ -46,33 +46,46 @@ class Scrapper:
 					return e
 
 
-class Google(Scrapper):
-	async def search(self, keywords, pages=10):
-		url = '/search?query='+keywords
+async def google(scrapper, keywords, pages=10):
+	url = '/search?query='+keywords
+	for n in range(pages):
+		html = await scrapper.get('https://www.google.com'+url)
+		if isinstance(html, Exception):
+			print('Error loading google page', url)
+			continue;
 
-		for n in range(pages):
-			html = await self.get('https://www.google.com'+url)
-			if isinstance(html, Exception):
-				print('Error loading google page', url)
-				continue;
+		organicLinks = html.xpath('//h3[@class="r"]//a/@href')
+		for link in organicLinks:
+			yield link, 'organic'
 
-			organicLinks = html.xpath('//h3[@class="r"]//a/@href')
-			for link in organicLinks:
-				yield link, 'organic'
+		# next page
+		url = html.xpath('//a[@id="pnnext"]/@href')
+		if not url:	break
+		url = url[0]
 
-			# next page
-			url = html.xpath('//a[@id="pnnext"]/@href')
-			if not url:	break
-			url = url[0]
+async def bing(scrapper, keywords, pages=10):
+	url = '/search?q='+keywords
+	for n in range(pages):
+		html = await scrapper.get('https://www.bing.com'+url)
+		if isinstance(html, Exception):
+			print('Error loading google page', url)
+			continue;
 
+		organicLinks = html.xpath('//h3[@class="r"]//a/@href')
+		for link in organicLinks:
+			yield link, 'organic'
+
+		# next page
+		url = html.xpath('//a[@id="pnnext"]/@href')
+		if not url:	break
+		url = url[0]
 
 async def searchLoop(loop, searchEngine, keywords):
 	scrapper = Scrapper(loop)
-	google = searchEngine(loop)
 
 	pages = set()
 
-	async for link, origin in google.search(keywords):
+	async for link, origin in searchEngine(scrapper, keywords):
 
 		urlparts = urlparse(link)
 		link = '{url.scheme}://{url.netloc}'.format(url=urlparts)
@@ -87,15 +100,15 @@ async def searchLoop(loop, searchEngine, keywords):
 			yield Row(url=link, origin=origin, doctype=None, tableCount=None, error=str(page))
 		else:
 			# cuenta el numero de tablas
+			doctType=page.getroottree().docinfo.doctype;
 			tableCount = len(page.xpath('//table'))
-
-			yield Row(url=link, origin=origin, doctype=None, tableCount=tableCount, error=None)
+			yield Row(url=link, origin=origin, doctype=doctType, tableCount=tableCount, error=None)
 
 async def search(loop, keywords, file='results.csv'):
 	with open(file, 'w', newline='') as csvFile:
 		csvWriter = csv.writer(csvFile)
 		csvWriter.writerow(headRow)
-		async for row in searchLoop(loop, Google, keywords):
+		async for row in searchLoop(loop, google, keywords):
 			csvWriter.writerow(row)
 
 
