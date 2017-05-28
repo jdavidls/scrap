@@ -1,22 +1,21 @@
-import sys, asyncio, aiohttp, async_timeout
+import sys, asyncio, aiohttp, async_timeout, collections, csv
 from lxml import html, etree
 from tld import get_tld
 from urllib.parse import urlparse
+from . import blacklist
+
 
 USER_AGENT = 'Mozilla/5.0 (iPad; CPU OS 9_1 like Mac OS X) AppleWebKit/601.1.46 (KHTML, like Gecko) Version/9.0 Mobile/13B143 Safari/601.1'
 
 '''
-
- 	Solo buscar homes.
  	analizar doctype html5
- 	blacklist
- 	solo una busqueda por web (crear un indice)
-
+	soltar tabs
 '''
 
+columns =['url', 'origin', 'doctype', 'tableCount', 'error']
+Row = collections.namedtuple('Row', columns)
+headRow = Row(*columns)
 
-
-from . import blacklist
 
 class Scrapper:
 	def __init__(self, loop, timeout=10):
@@ -31,19 +30,20 @@ class Scrapper:
 			async with aiohttp.ClientSession(loop=self.loop, headers=self.headers) as session:
 				try:
 					async with session.get(url) as response:
+						## check status code
 						try:
 							text = await response.text()
-						except:
+						except Exception as e:
 							print(url, 'has an unicode error')
-							return
+							return e
 						try:
 							return html.fromstring(text)
-						except:
+						except Exception as e:
 							print(url, 'has a XML/HTML parsing error')
-							return
-				except:
+							return e
+				except Exception as e:
 					print(url, 'has a HTTP/SSL errors')
-					return
+					return e
 
 
 class Google(Scrapper):
@@ -52,49 +52,57 @@ class Google(Scrapper):
 
 		for n in range(pages):
 			html = await self.get('https://www.google.com'+url)
-			if html is None:
+			if isinstance(html, Exception):
+				print('Error loading google page', url)
 				continue;
 
 			if ads:
-				adLinks = html.xpath('//li[@class="ads-ad"]/child::a/@href')
+				adLinks = html.xpath('//li[@class="ads-ad"]//a/@href')
 				for link in adLinks:
 					yield link, 'ads'
 
 			if organic:
-				organicLinks = html.xpath('//h3[@class="r"]/child::a/@href')
+				organicLinks = html.xpath('//h3[@class="r"]//a/@href')
 				for link in organicLinks:
 					yield link, 'organic'
 
 			# next page
 			url = html.xpath('//a[@id="pnnext"]/@href')
-			if not url:
-				break
+			if not url:	break
 			url = url[0]
 
 
-
-async def search(loop, keywords):
+async def searchLoop(loop, searchEngine, keywords):
 	scrapper = Scrapper(loop)
-	google = Google(loop)
+	google = searchEngine(loop)
 
-	pages = {}
+	pages = set()
 
 	async for link, origin in google.search(keywords):
 
 		urlparts = urlparse(link)
 		link = '{url.scheme}://{url.netloc}'.format(url=urlparts)
 		tld = get_tld(link)
-
 		if tld in pages or tld in blacklist.tld: continue
+		pages.add(tld)
+		print('Scanning', tld)
 
 		#print('scanning', link)
 		page = await scrapper.get(link)
-		if page is None: continue
+		if isinstance(page, Exception):
+			yield Row(url=link, origin=origin, doctype=None, tableCount=None, error=str(page))
+		else:
+			# cuenta el numero de tablas
+			tableCount = len(page.xpath('//table'))
 
-		# cuenta el numero de tablas
-		tables = page.xpath('//table')
-		tables and print(origin, link, 'has', len(tables), 'tables')
+			yield Row(url=link, origin=origin, doctype=None, tableCount=tableCount, error=None)
 
+async def search(loop, keywords, file='results.csv'):
+	with open(file, 'w', newline='') as csvFile:
+		csvWriter = csv.writer(csvFile)
+		csvWriter.writerow(headRow)
+		async for row in searchLoop(loop, Google, keywords):
+			csvWriter.writerow(row)
 
 
 loop = asyncio.get_event_loop()
