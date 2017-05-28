@@ -2,7 +2,6 @@ import sys, asyncio, aiohttp, async_timeout, collections, csv
 from lxml import html, etree
 from tld import get_tld
 from urllib.parse import urlparse
-from . import blacklist
 
 
 USER_AGENT = 'Mozilla/5.0 (iPad; CPU OS 9_1 like Mac OS X) AppleWebKit/601.1.46 (KHTML, like Gecko) Version/9.0 Mobile/13B143 Safari/601.1'
@@ -16,6 +15,11 @@ columns =['url', 'origin', 'doctype', 'tableCount', 'error']
 Row = collections.namedtuple('Row', columns)
 headRow = Row(*columns)
 
+def readFileSet(filename):
+	with open(filename, 'r') as f:
+		return set(f.readlines())
+
+blacklist = readFileSet('./data/blacklist.txt')
 
 class Scrapper:
 	def __init__(self, loop, timeout=10):
@@ -90,7 +94,7 @@ async def searchLoop(loop, searchEngine, keywords):
 		urlparts = urlparse(link)
 		link = '{url.scheme}://{url.netloc}'.format(url=urlparts)
 		tld = get_tld(link)
-		if tld in pages or tld in blacklist.tld: continue
+		if tld in pages or tld in blacklist: continue
 		pages.add(tld)
 		print('Scanning', tld)
 
@@ -104,8 +108,9 @@ async def searchLoop(loop, searchEngine, keywords):
 			tableCount = len(page.xpath('//table'))
 			yield Row(url=link, origin=origin, doctype=doctType, tableCount=tableCount, error=None)
 
-async def search(loop, keywords, file='results.csv'):
-	with open(file, 'w', newline='') as csvFile:
+async def search(loop, keywords):
+	outputFilename = './data/' + keywords + '.csv'
+	with open(outputFilename, 'w', newline='') as csvFile:
 		csvWriter = csv.writer(csvFile)
 		csvWriter.writerow(headRow)
 		async for row in searchLoop(loop, google, keywords):
