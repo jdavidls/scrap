@@ -47,7 +47,7 @@ class Scrapper:
 
 
 class Google(Scrapper):
-	async def search(self, keywords, pages=10, ads=True, organic=True):
+	async def search(self, keywords, pages=10):
 		url = '/search?query='+keywords
 
 		for n in range(pages):
@@ -56,15 +56,9 @@ class Google(Scrapper):
 				print('Error loading google page', url)
 				continue;
 
-			if ads:
-				adLinks = html.xpath('//li[@class="ads-ad"]//a/@href')
-				for link in adLinks:
-					yield link, 'ads'
-
-			if organic:
-				organicLinks = html.xpath('//h3[@class="r"]//a/@href')
-				for link in organicLinks:
-					yield link, 'organic'
+			organicLinks = html.xpath('//h3[@class="r"]//a/@href')
+			for link in organicLinks:
+				yield link, 'organic'
 
 			# next page
 			url = html.xpath('//a[@id="pnnext"]/@href')
