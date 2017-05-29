@@ -53,6 +53,7 @@ class Scrapper:
 async def google(scrapper, keywords, pages=50):
 	url = '/search?query='+keywords
 	for n in range(pages):
+		print('GOOGLE SEARCH FOR', keywords, 'PAGE', n)
 		html = await scrapper.get('https://www.google.com'+url)
 		if isinstance(html, Exception):
 			print('Error loading google page', url)
