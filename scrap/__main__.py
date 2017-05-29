@@ -17,7 +17,7 @@ headRow = Row(*columns)
 
 def readFileSet(filename):
 	with open(filename, 'r') as f:
-		return set(f.readlines())
+		return set([x.strip() for x in f.readlines()])
 
 blacklist = readFileSet('./data/blacklist.txt')
 
