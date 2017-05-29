@@ -50,7 +50,7 @@ class Scrapper:
 					return e
 
 
-async def google(scrapper, keywords, pages=10):
+async def google(scrapper, keywords, pages=20):
 	url = '/search?query='+keywords
 	for n in range(pages):
 		html = await scrapper.get('https://www.google.com'+url)
