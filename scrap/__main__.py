@@ -37,7 +37,7 @@ class Scrapper:
 						## check status code
 						if response.status != 200:
 							print(url, 'response', response.status, ':', response.reason)
-							return 
+							return
 						else:
 							try:
 								text = await response.text()
@@ -71,6 +71,9 @@ async def google(scrapper, keywords, pages=50):
 		url = html.xpath('//a[@id="pnnext"]/@href')
 		if not url:	break
 		url = url[0]
+
+        #sleep
+        await asyncio.sleep(1)
 
 async def bing(scrapper, keywords, pages=50):
 	url = '/search?q='+keywords
