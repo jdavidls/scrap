@@ -35,16 +35,20 @@ class Scrapper:
 				try:
 					async with session.get(url) as response:
 						## check status code
-						try:
-							text = await response.text()
-						except Exception as e:
-							print(url, 'has an unicode error')
-							return e
-						try:
-							return html.fromstring(text)
-						except Exception as e:
-							print(url, 'has a XML/HTML parsing error')
-							return e
+						if response.status != 200:
+							print(url, 'response', response.status, ':', response.reason)
+							return 
+						else:
+							try:
+								text = await response.text()
+							except Exception as e:
+								print(url, 'has an unicode error')
+								return e
+							try:
+								return html.fromstring(text)
+							except Exception as e:
+								print(url, 'has a XML/HTML parsing error')
+								return e
 				except Exception as e:
 					print(url, 'has a HTTP/SSL errors')
 					return e
@@ -55,9 +59,9 @@ async def google(scrapper, keywords, pages=50):
 	for n in range(pages):
 		print('GOOGLE SEARCH FOR', keywords, 'PAGE', n)
 		html = await scrapper.get('https://www.google.com'+url)
-		if isinstance(html, Exception):
+		if isinstance(html, Exception) or html is None:
 			print('Error loading google page', url)
-			continue;
+			break
 
 		organicLinks = html.xpath('//h3[@class="r"]//a/@href')
 		for link in organicLinks:
